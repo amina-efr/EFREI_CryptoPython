@@ -1,37 +1,33 @@
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from flask import Flask, render_template
-import os
 
 app = Flask(__name__)
-
-# Charger la clé si elle existe, sinon en générer une
-if os.path.exists("secret.key"):
-    with open("secret.key", "rb") as key_file:
-        key = key_file.read()
-else:
-    key = Fernet.generate_key()
-    with open("secret.key", "wb") as key_file:
-        key_file.write(key)
-
-f = Fernet(key)
 
 @app.route('/')
 def hello_world():
     return render_template('hello.html')
 
-@app.route('/encrypt/<string:valeur>')
-def encryptage(valeur):
-    valeur_bytes = valeur.encode()  # str -> bytes
-    token = f.encrypt(valeur_bytes)
-    return f"Valeur encryptée : {token.decode()}"  # bytes -> str
-
-@app.route('/decrypt/<string:token>')
-def decryptage(token):
+# Route avec clé personnelle pour chiffrer une valeur
+@app.route('/encrypt/<key>/<valeur>')
+def encrypt_personnalise(key, valeur):
     try:
-        valeur_bytes = f.decrypt(token.encode())  # str -> bytes -> decrypt
-        return f"Valeur décryptée : {valeur_bytes.decode()}"  # bytes -> str
+        f = Fernet(key.encode())
+        token = f.encrypt(valeur.encode())
+        return f"Valeur encryptée : {token.decode()}"
     except Exception as e:
-        return f"Erreur lors du décryptage : {str(e)}"
+        return f"Erreur de chiffrement : {str(e)}"
+
+# Route avec clé personnelle pour déchiffrer un token
+@app.route('/decrypt/<key>/<token>')
+def decrypt_personnalise(key, token):
+    try:
+        f = Fernet(key.encode())
+        valeur = f.decrypt(token.encode())
+        return f"Valeur décryptée : {valeur.decode()}"
+    except InvalidToken:
+        return "Erreur : Token invalide ou clé incorrecte"
+    except Exception as e:
+        return f"Erreur : {str(e)}"
 
 if __name__ == "__main__":
     app.run(debug=True)
