@@ -1,53 +1,50 @@
+from cryptography.fernet import Fernet
 from flask import Flask, request
-from cryptography.fernet import Fernet, InvalidToken
+import base64
 
 app = Flask(__name__)
 
-@app.route('/')
-def accueil():
-    return '''
-    <h1>Bienvenue sur CryptoPython</h1>
-    <p>Utilisez /key pour générer une clé</p>
-    <p>Utilisez /encrypt?key=VOTRE_CLE&value=VOTRE_TEXTE</p>
-    <p>Utilisez /decrypt?key=VOTRE_CLE&token=VOTRE_TOKEN</p>
-    '''
+def generate_key(user_key):
+    """Génère une clé Fernet à partir de la clé fournie par l'utilisateur"""
+    user_key = user_key.ljust(32)[:32]  # Assurer que la clé fait 32 caractères
+    return base64.urlsafe_b64encode(user_key.encode())
 
-@app.route('/key')
-def generer_cle():
-    cle = Fernet.generate_key().decode()
-    return f"Clé générée : {cle}"
+@app.route('/encrypt', methods=['GET'])
+def encryptage():
+    valeur = request.args.get('valeur')
+    user_key = request.args.get('key')
 
-@app.route('/encrypt')
-def encrypt():
-    key = request.args.get('key')
-    value = request.args.get('value')
+    if not valeur or not user_key:
+        return "Erreur : Veuillez fournir une valeur et une clé."
 
-    if not key or not value:
-        return "Paramètres manquants : key et value requis"
+    # Générer une clé unique à partir de la clé utilisateur
+    key = generate_key(user_key)
+    f = Fernet(key)
 
-    try:
-        f = Fernet(key.encode())
-        token = f.encrypt(value.encode())
-        return f"Valeur encryptée : {token.decode()}"
-    except Exception as e:
-        return f"Erreur de chiffrement : {str(e)}"
+    valeur_bytes = valeur.encode()
+    token = f.encrypt(valeur_bytes)
+    return f"Valeur encryptée : {base64.urlsafe_b64encode(token).decode()}"
 
-@app.route('/decrypt')
-def decrypt():
-    key = request.args.get('key')
-    token = request.args.get('token')
+@app.route('/decrypt', methods=['GET'])
+def decryptage():
+    valeur_chiffree = request.args.get('valeur_chiffree')
+    user_key = request.args.get('key')
 
-    if not key or not token:
-        return "Paramètres manquants : key et token requis"
+    if not valeur_chiffree or not user_key:
+        return "Erreur : Veuillez fournir une valeur chiffrée et une clé."
 
     try:
-        f = Fernet(key.encode())
-        decrypted = f.decrypt(token.encode())
-        return f"Valeur décryptée : {decrypted.decode()}"
-    except InvalidToken:
-        return "Erreur : token invalide ou clé incorrecte"
-    except Exception as e:
-        return f"Erreur : {str(e)}"
+        # Générer la même clé utilisateur
+        key = generate_key(user_key)
+        f = Fernet(key)
 
-if __name__ == '__main__':
+        # Décoder et déchiffrer
+        token_bytes = base64.urlsafe_b64decode(valeur_chiffree.encode())
+        valeur_dechiffree = f.decrypt(token_bytes).decode()
+        return f"Valeur décryptée : {valeur_dechiffree}"
+
+    except Exception as e:
+        return f"Erreur lors du déchiffrement : {str(e)}"
+
+if __name__ == "__main__":
     app.run(debug=True)
