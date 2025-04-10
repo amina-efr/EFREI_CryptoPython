@@ -1,33 +1,53 @@
+from flask import Flask, request
 from cryptography.fernet import Fernet, InvalidToken
-from flask import Flask, render_template
 
 app = Flask(__name__)
 
 @app.route('/')
-def hello_world():
-    return render_template('hello.html')
+def accueil():
+    return '''
+    <h1>Bienvenue sur CryptoPython</h1>
+    <p>Utilisez /key pour générer une clé</p>
+    <p>Utilisez /encrypt?key=VOTRE_CLE&value=VOTRE_TEXTE</p>
+    <p>Utilisez /decrypt?key=VOTRE_CLE&token=VOTRE_TOKEN</p>
+    '''
 
-# Route avec clé personnelle pour chiffrer une valeur
-@app.route('/encrypt/<key>/<valeur>')
-def encrypt_personnalise(key, valeur):
+@app.route('/key')
+def generer_cle():
+    cle = Fernet.generate_key().decode()
+    return f"Clé générée : {cle}"
+
+@app.route('/encrypt')
+def encrypt():
+    key = request.args.get('key')
+    value = request.args.get('value')
+
+    if not key or not value:
+        return "Paramètres manquants : key et value requis"
+
     try:
         f = Fernet(key.encode())
-        token = f.encrypt(valeur.encode())
+        token = f.encrypt(value.encode())
         return f"Valeur encryptée : {token.decode()}"
     except Exception as e:
         return f"Erreur de chiffrement : {str(e)}"
 
-# Route avec clé personnelle pour déchiffrer un token
-@app.route('/decrypt/<key>/<token>')
-def decrypt_personnalise(key, token):
+@app.route('/decrypt')
+def decrypt():
+    key = request.args.get('key')
+    token = request.args.get('token')
+
+    if not key or not token:
+        return "Paramètres manquants : key et token requis"
+
     try:
         f = Fernet(key.encode())
-        valeur = f.decrypt(token.encode())
-        return f"Valeur décryptée : {valeur.decode()}"
+        decrypted = f.decrypt(token.encode())
+        return f"Valeur décryptée : {decrypted.decode()}"
     except InvalidToken:
-        return "Erreur : Token invalide ou clé incorrecte"
+        return "Erreur : token invalide ou clé incorrecte"
     except Exception as e:
         return f"Erreur : {str(e)}"
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
