@@ -4,6 +4,10 @@ import base64
 
 app = Flask(__name__)
 
+@app.route('/', methods=['GET'])
+def accueil():
+    return "Bienvenue sur ma page AH"
+    
 def generate_key(user_key):
     """Génère une clé Fernet à partir de la clé fournie par l'utilisateur"""
     user_key = user_key.ljust(32)[:32]  # Assurer que la clé fait 32 caractères
