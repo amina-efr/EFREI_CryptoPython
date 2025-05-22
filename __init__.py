@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def accueil():
-    return "Bienvenue sur ma page AH"
+    return "<h1> Bienvenue sur ma page AH </h1>"
     
 def generate_key(user_key):
     """Génère une clé Fernet à partir de la clé fournie par l'utilisateur"""
